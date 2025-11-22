@@ -44,6 +44,7 @@ WebEvidenceCapturer (WEC) creates an `output_<datetime>` directory in `$HOME/Dow
 This directory contains all captured data, HAR file, hash files, and timestamp files, organized as follows:  
 A detailed explanation of the directory structure is also included in the `README.txt` file generated within the output directory.
 
+```text
 
 output_<datetime>/
 ├── main/
@@ -69,6 +70,7 @@ output_<datetime>/
 │ └── (temporary files generated during HAR creation)
 └── README.txt
 
+```
 
 ## Logical Structure of Evidence
 
