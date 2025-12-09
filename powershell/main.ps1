@@ -54,31 +54,56 @@ if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
 
 Write-Host "wsl runnnig.."
 
-if ($flag -eq 0) {
-    wsl bash -c "source ~/dev/myenv_withPlayWright/bin/activate && python3 ~/dev/myenv_withPlayWright/ObtainHashOts.py '$wslScriptUrlTxtPath' '$output_dir_name' '$base_name'"
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "An error occurred (CODE: $LASTEXITCODE)"
-        return
-    }
-}
+<#
+$script_path = "/home/envuser/dev/myenv_withPlayWright/ObtainHashOts.py"
+$python_path = "/home/envuser/dev/myenv_withPlayWright/bin/python3"
+$log_path = "/mnt/c/Users/PC01/Projects/WebEvidenceCapture_forGit/examples/debug_log.txt"
 
+# WSLで実行するbashコマンド文字列を構築
+$bash_command = "$python_path '$script_path' '$wslScriptUrlTxtPath' '$output_dir_name' '$base_name' > '$log_path' 2>&1"
 
-if ($flag -eq 0) {
-    wsl bash -c "source ~/dev/myenv_withPlayWright/bin/activate && python3 ~/dev/myenv_withPlayWright/ObtainHashOts.py '$wslScriptUrlTxtPath' '$output_dir_name' '$base_name'"
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "An error occurred (CODE: $LASTEXITCODE)"
-        return
-    }
-}
+# コマンド全体をStart-Processで非同期実行（cmd.exe経由）
+Start-Process "wsl.exe" -ArgumentList "bash", "-c", $bash_command
+
+#>
 
 <#
+$script_path = "~/dev/myenv_withPlayWright/ObtainHashOts.py"
+$command = ". ~/dev/myenv_withPlayWright/bin/activate && python3 '$script_path' '$wslScriptUrlTxtPath' '$output_dir_name' '$base_name'"
+
+Start-Process wsl.exe -ArgumentList @("bash", "-lc", $command)
+#>
+<#
+$script_path = "~/dev/myenv_withPlayWright/ObtainHashOts.py"
+$venv_activate = "source ~/dev/myenv_withPlayWright/bin/activate"
+$log_path = "~/dev/myenv_withPlayWright/output_log.txt"
+
+$command = "$venv_activate && python3 '$script_path' '$wslScriptUrlTxtPath' '$output_dir_name' '$base_name' > '$log_path' 2>&1"
+
+Start-Process wsl.exe -ArgumentList @("bash", "-c", $command)
+#>
+
+<#
+if ($flag -eq 0) {
+    $script_path = "~/dev/myenv_withPlayWright/ObtainHashOts.py"
+    $venv_activate = "source ~/dev/myenv_withPlayWright/bin/activate"
+    $command = "$venv_activate && python3 '$script_path' '$wslScriptUrlTxtPath' '$output_dir_name' '$base_name'"
+    Start-Process wsl.exe -ArgumentList @("bash", "-c", $command)
+}
+#>
+
+
 if ($flag -eq 0) {
    $command = "source ~/dev/myenv_withPlayWright/bin/activate && python3 ~/dev/myenv_withPlayWright/ObtainHashOts.py '$wslScriptUrlTxtPath' '$output_dir_name' '$base_name'"
 
    Start-Process cmd.exe -ArgumentList "/c wsl bash -c '$command'"
 
 }
-#>
+
+if ($flag -eq 0) {
+   wsl bash -c "nohup python3 ~/dev/myenv_withPlayWright/ObtainHashOts.py '$wslScriptUrlTxtPath' '$output_dir_name' '$base_name' > /tmp/output.log 2>&1 &"
+}
+
 
 if ($flag -eq 1){
    Show-AutoClosingMessage -Message "Wayback save is not implemented yet. Exiting." -Seconds 3
@@ -88,12 +113,9 @@ if ($flag -eq 1){
     return
 }
 
-
-# success.txt path output by Python
+# htmlFetched.txt path output by Python
 $htmlFetchedPath = Join-Path $PSScriptRoot "../examples/htmlFetched.txt"
-
 $timeoutSec = 60
-
 Write-Host "Waiting for htmlFetched signal from Python..."
 
 # Start time
@@ -109,16 +131,7 @@ while (-not (Test-Path $htmlFetchedPath)) {
    }
 }
 
-Write-Host "Detected success.txt! Proceeding to the next step..."
-
-
-if ($flag -eq 1){
-   Show-AutoClosingMessage -Message "Wayback save is not implemented yet. Exiting." -Seconds 3
-   # TODO: Plan to implement for saving process via Wayback machine
-    # 1. Saving request using Wayback API
-    # 2. enable user to opt saving scope if possible
-    return
-}
+Write-Host "Detected htmlFetched.txt! Proceeding to the next step..."
 
 # Saving Full HTML by means of Chrome + SingleFile
 

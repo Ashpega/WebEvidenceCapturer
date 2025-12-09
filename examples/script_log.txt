@@ -1,7 +1,5 @@
-venv_root in OpenChromium.py = /home/envuser/dev/myenv_withPlayWright
-Starting to obtain HTML & PNG...
 Traceback (most recent call last):
-  File "/home/envuser/dev/myenv_withPlayWright/ObtainHashOts.py", line 111, in <module>
-    locale=locale_str,
-           ^^^^^^^^^^
-NameError: name 'locale_str' is not defined
+  File "/home/envuser/dev/myenv_withPlayWright/ObtainHashOts.py", line 58, in <module>
+    with open(url_file_path, 'r', encoding='utf-8') as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/mnt/c/Users/YourName/tmp_url.txt'
