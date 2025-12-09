@@ -1,0 +1,7 @@
+venv_root in OpenChromium.py = /home/envuser/dev/myenv_withPlayWright
+Starting to obtain HTML & PNG...
+Traceback (most recent call last):
+  File "/home/envuser/dev/myenv_withPlayWright/ObtainHashOts.py", line 111, in <module>
+    locale=locale_str,
+           ^^^^^^^^^^
+NameError: name 'locale_str' is not defined

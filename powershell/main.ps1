@@ -52,32 +52,64 @@ if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
 	return
 	}
 
-# path for profile folder
-$ProfileDir = Join-Path $PSScriptRoot "chromium_profile"
-
-# Ensure the folder exists
-if (-not (Test-Path $ProfileDir)) {
-    New-Item -ItemType Directory -Path $ProfileDir | Out-Null
-}
+Write-Host "wsl runnnig.."
 
 if ($flag -eq 0) {
-   Start-Process "C:\Program Files\Google\Chrome\Application\chrome.exe" `
-     -ArgumentList @(
-	   "--remote-debugging-port=9333"
-	   "--user-data-dir=`"$ProfileDir`""
-	   "--no-first-run"
-	   "--no-default-browser-check"
-           "--disable-sync"
-           "--disable-first-run-ui"
-	   "$url"
-     )
-   Write-Host "Launching Chrome for saving using SingleFile."
+    wsl bash -c "source ~/dev/myenv_withPlayWright/bin/activate && python3 ~/dev/myenv_withPlayWright/ObtainHashOts.py '$wslScriptUrlTxtPath' '$output_dir_name' '$base_name'"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "An error occurred (CODE: $LASTEXITCODE)"
+        return
+    }
+}
 
-$activate = "source ~/dev/myenv_withPlayWright/bin/activate"
-$script_path = "~/dev/myenv_withPlayWright/ObtainHashOts.py"
-$command = "$activate && python3 $script_path '$wslScriptUrlTxtPath' '$output_dir_name' '$base_name'"
 
-Start-Process wsl.exe -ArgumentList @("bash", "-c", $command)
+if ($flag -eq 0) {
+    wsl bash -c "source ~/dev/myenv_withPlayWright/bin/activate && python3 ~/dev/myenv_withPlayWright/ObtainHashOts.py '$wslScriptUrlTxtPath' '$output_dir_name' '$base_name'"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "An error occurred (CODE: $LASTEXITCODE)"
+        return
+    }
+}
+
+<#
+if ($flag -eq 0) {
+   $command = "source ~/dev/myenv_withPlayWright/bin/activate && python3 ~/dev/myenv_withPlayWright/ObtainHashOts.py '$wslScriptUrlTxtPath' '$output_dir_name' '$base_name'"
+
+   Start-Process cmd.exe -ArgumentList "/c wsl bash -c '$command'"
+
+}
+#>
+
+if ($flag -eq 1){
+   Show-AutoClosingMessage -Message "Wayback save is not implemented yet. Exiting." -Seconds 3
+   # TODO: Plan to implement for saving process via Wayback machine
+    # 1. Saving request using Wayback API
+    # 2. enable user to opt saving scope if possible
+    return
+}
+
+
+# success.txt path output by Python
+$htmlFetchedPath = Join-Path $PSScriptRoot "../examples/htmlFetched.txt"
+
+$timeoutSec = 60
+
+Write-Host "Waiting for htmlFetched signal from Python..."
+
+# Start time
+$startTime = Get-Date
+
+while (-not (Test-Path $htmlFetchedPath)) {
+   Start-Sleep -Seconds 1
+
+       # Timeout judgement
+   if ((Get-Date) - $startTime -gt (New-TimeSpan -Seconds $timeoutSec)) {
+      Write-Host "Timeout: htmlFetched.txt did not appear within $timeoutSec seconds."
+      exit 1   # quit main.ps1
+   }
+}
+
+Write-Host "Detected success.txt! Proceeding to the next step..."
 
 
 if ($flag -eq 1){
@@ -89,6 +121,11 @@ if ($flag -eq 1){
 }
 
 # Saving Full HTML by means of Chrome + SingleFile
+
+# Launching Chrome...
+Write-Host "Launching Chrome for saving using SingleFile."
+
+Start-Process "chrome.exe" -ArgumentList @("--profile-directory=Default", "$url")
 
 # Check for saved HTML files in Downloads directory
 # Obtain the file list (as a dictionary) in the Downloads folder before saveing
@@ -125,29 +162,35 @@ while ($elapsed -lt $timeout) {
        $elapsed++
 }
 
+# Close the open Chrome tab using AHK
+Write-Host " Executing AHK script for closing Chrome tab..."
+Start-Process (Join-Path $PSScriptRoot "..\ahk\CloseChromeTab1.ahk")
 
-# Rename the full HTML file and generating its hash and OTS timestamp
+
+# Rename the full HTML file and create fullhtmlReady.txt
 if ($newFile) {
    $targetPath = Join-Path -Path (Split-Path $newFile) -ChildPath "$base_name.full.html"
    Move-Item -Path $newFile.FullName -Destination $targetPath -Force
    Write-Host "Renamed file path: $targetPath"
    $wslScriptFullHtmlPath = wsl wslpath "'$targetPath'"
    Write-Host "Renamed WSL path for Full HTML: $wslScriptFullHtmlPath"
-   $FullHtmlPathTxtPath = (Join-Path $PSScriptRoot "../examples/wslScriptFullHtmlPath.txt")
-   $wslScriptFullHtmlPath | Out-File -FilePath $FullHtmlPathTxtPath -Encoding utf8   
+
+$FullHtmlPathTxtPath = (Join-Path $PSScriptRoot "../examples/fullhtmlReady.txt")
+
+$wslScriptFullHtmlPath | Out-File -FilePath $FullHtmlPathTxtPath -Encoding utf8
 }
 
 # success.txt path output by Python
-$SuccessFile = Join-Path $PSScriptRoot "../examples/success.txt"
+$successFilePath = Join-Path $PSScriptRoot "../examples/success.txt"
 
-$timeoutSec = 120
+$timeoutSec = 60
 
 Write-Host "Waiting for success signal from Python..."
 
-# Start time
+# wait for success.txt output by Python
 $startTime = Get-Date
 
-while (-not (Test-Path $SuccessFile)) {
+while (-not (Test-Path $successFilePath)) {
    Start-Sleep -Seconds 1
 
        # Timeout judgement
@@ -159,10 +202,6 @@ while (-not (Test-Path $SuccessFile)) {
 
 Write-Host "Detected success.txt! Proceeding to the next step..."
 
-
-# Close the open Chrome tab using AHK
-Write-Host " Executing AHK script for closing Chrome tab..."
-Start-Process (Join-Path $PSScriptRoot "..\ahk\CloseChromeTab1.ahk")
 
 # Check if the output folder has been created in the Downloads folder
 $expectedPath = Join-Path $DLdirPath $output_dir_name
