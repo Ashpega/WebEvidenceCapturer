@@ -1,0 +1,14 @@
+# Changelog
+
+## [v2.1.0] – YYYY-MM-DD
+
+### Added
+- Asynchronous coordination between PowerShell and WSL processes
+- File-based signaling to avoid Chrome/SingleFile contention
+
+### Changed
+- Execution flow redesigned to prevent HAR and Full HTML conflicts
+- Windows entry point simplified for double-click execution
+
+### Fixed
+- Timing issues between HAR finalization and SingleFile save

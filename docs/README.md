@@ -1,8 +1,10 @@
 # WebEvidenceCapturer
 
+**Version:** v2.1.0
+
 
 ## Overview
-“WebEvidenceCapturer” is a practical tool for preserving verifiable evidence that a specific webpage was publicly available with the original content at a particular point in time.
+“WebEvidenceCapturer (WEC)” is a practical tool for preserving verifiable evidence that a specific webpage was publicly available with the original content at a particular point in time.
 
 When official certification or third-party archiving services are unavailable, costly, or too slow, this tool enables users to capture webpages independently and reliably.
 It is especially useful in situations where:
@@ -20,27 +22,28 @@ It is well-suited for individuals handling legal matters on their own, corporate
 This section outlines the steps WebEvidenceCapturer follows to preserve a webpage, along with the rationale behind each step.
 
 ### 1.  Capture HTML, PNG, and HAR using Playwright
+   - Playwright controls a Chromium browser instance to capture the HTML, PNG, and HAR files in a consistent browsing context.
    - The HTML and PNG files are captured to record the visual and structural content of the webpage.
    - A HAR (HTTP Archive) file is also saved, which is a JSON-formatted log of the browser’s full network activity during the browsing session, including the requests and responses involved in obtaining the HTML and PNG files.
 
-### 2.  Generate SHA-256 hashes for HTML and HAR files
+### 2.  Save Full HTML using SingleFile
+   - [SingleFile](https://github.com/gildas-lormeau/SingleFile) is a Chrome extension that saves an entire webpage—including CSS, images, fonts, and frames—as a single standalone HTML file.
+   - This format closely reflects how the webpage appears to users in a browser.
+   - Full HTML serves as a visual complement, especially in cases where Playwright cannot capture the page correctly due to anti-bot mechanisms or dynamic content.
+
+### 3.  Generate SHA-256 hashes for captured files
    - Two types of hash text files are created for each target file:
      (1) one including file information such as URL and timestamp, and
      (2) one containing only the hash value.
    - These hashes provide proof of content integrity and are used as input for timestamping.
 
-### 3.  Obtain OTS timestamps for each hash text file
+### 4.  Obtain OTS timestamps for each hash text file
    - OpenTimestamps (OTS) is a blockchain-based timestamping protocol.
    - WEC applies OTS timestamps to both types of hash text files to prove that they have not been modified since the time of capture.
 
-### 4.  Save Full HTML using SingleFile
-   - [SingleFile](https://github.com/gildas-lormeau/SingleFile) is a Chrome extension that saves an entire webpage—including CSS, images, fonts, and frames—as a single standalone HTML file.
-   - This format closely reflects how the webpage appears to users in a browser.
-   - Full HTML serves as a visual complement, especially in cases where Playwright cannot capture the page correctly due to anti-bot mechanisms or dynamic content.
-
 
 ## Output Structure
-WebEvidenceCapturer (WEC) creates an `output_<datetime>` directory in `$HOME/Downloads/`.  
+WebEvidenceCapturer (WEC) creates an `output_<datetime>` directory in `$HOME/Downloads/` (the Windows Downloads folder).
 This directory contains all captured data, HAR file, hash files, and timestamp files, organized as follows:  
 A detailed explanation of the directory structure is also included in the `README.txt` file generated within the output directory.
 
@@ -53,20 +56,20 @@ output_<datetime>/
 │ ├── <base_name>.har
 │ └── <base_name>.full.html
 ├── hash/
-│ ├── <base_name>.sha256.txt
-│ ├── <base_name>.onlysha256.txt
+│ ├── <base_name>.htmlsha256.txt
+│ ├── <base_name>.onlyhtmlsha256.txt
 │ ├── <base_name>.harsha256.txt
 │ ├── <base_name>.onlyharsha256.txt
-│ ├── <base_name>.fullsha256.txt
-│ └── <base_name>.onlyfullsha256.txt
+│ ├── <base_name>.fullhtmlsha256.txt
+│ └── <base_name>.onlyfullhtmlsha256.txt
 ├── ots/
-│ ├── <base_name>.sha256.txt.ots
-│ ├── <base_name>.onlysha256.txt.ots
+│ ├── <base_name>.htmlsha256.txt.ots
+│ ├── <base_name>.onlyhtmlsha256.txt.ots
 │ ├── <base_name>.harsha256.txt.ots
 │ ├── <base_name>.onlyharsha256.txt.ots
-│ ├── <base_name>.fullsha256.txt.ots
-│ └── <base_name>.onlyfullsha256.txt.ots
-├── assets/
+│ ├── <base_name>.fullhtmlsha256.txt.ots
+│ └── <base_name>.onlyfullhtmlsha256.txt.ots
+├── workspace/
 │ └── (temporary files generated during HAR creation)
 └── README.txt
 
@@ -75,8 +78,8 @@ output_<datetime>/
 ## Logical Structure of Evidence
 
 - The HAR file serves as proof that network communication took place and that specific content was transmitted and received.
-- The HTML and PNG files were obtained during the same session, and their consistency with the HAR data can be verified.
-- When the OTS timestamps of the HAR hash and the Full HTML hash are close in time, and neither file shows signs of tampering, it provides strong presumptive evidence that the webpage was publicly available in that form at that time.
+- The HTML and PNG files were obtained during the same session, and their consistency with the HAR data is verifiable.
+- Saving Full HTML using SingleFile is performed during HAR recording. This can be confirmed by comparing the OTS timestamps of the Full HTML hash with the HAR flush time (or the OTS timestamps of the HAR hash). Since neither OTS timestamp file shows any sign of tampering, this provides strong presumptive evidence that the webpage was publicly available in that form at that time.
 - The combination of SHA-256 hashes and OTS timestamps ensures that none of the captured files have been altered since the time of acquisition.
 
 
@@ -99,8 +102,8 @@ URL: https://news.yahoo.co.jp/categories/science
   Note: HAR file：Network Communication log when saving PNG and HTML
 - main\news.yahoo.co.jp_categories_science.full.html
 
-【Assets generated during HAR creation】
-- assets\<<various files>>
+【workspace generated during HAR creation】
+- workspace\<<various files>>
 ...
 
 【OTS Timestamp Files】
@@ -147,6 +150,10 @@ wsl --install -d Ubuntu-24.04
 ### 4. Set Up Python Environment in WSL
 
 ```bash
+# Install Tk support for Python (required for tkinter)
+sudo apt update
+sudo apt install -y python3-tk
+
 # Install venv and pip
 sudo apt update
 sudo apt install -y python3.12-venv python3-pip
@@ -168,34 +175,33 @@ playwright install
 
 # Install OpenTimestamps client
 pip install opentimestamps-client
+
 ```
 
 ## Usage
-- Obtain this repository by running `git pull` or downloading the ZIP file.
-- Move `GetHashOtsofFullHtml.py` and `ObtainPngHtml.py` to the home directory of the virtual environment in WSL (e.g., `/home/<username>/`).
-- Place the remaining files (e.g., PowerShell scripts) into any directory on the Windows side (e.g., `C:\Users\<username>\Projects\WebEvidenceCapturer\`).
-- Double-click `run_main.bat` to start the process.
-- After execution, an `output_<datetime>` folder will be created in the `Downloads` folder (e.g., `C:\Users\<username>\Downloads\`).
 
-For details about the file and folder structure, please refer to the `README.txt` file in the generated output folder.
+- Clone this repository using `git clone`, or download the ZIP file and extract it to the following directory on the Windows side (this location is required):
+  `C:\Users\<username>\Projects\WebEvidenceCapturer\`
+- Copy `SaveWebforEvidence.py`, `AutoCloseMsgBox.py`, and `CreateBaseName.py` to the project directory used with the Python virtual environment in WSL (e.g., `/home/<username>/<project-name>/`).
 
+- Leave the remaining files and folders in the downloaded directory on the Windows side as they are.
+- Double-click `run_main_ps.bat` to start the process.
+- After execution, an `output_<datetime>` folder will be created in the Windows `Downloads` folder (e.g., `C:\Users\<username>\Downloads\`).
+
+For details about the generated files and folder structure, refer to the `README.txt` file located in the generated output folder.
 
 ## Notes / Limitations
 
-- Saving a designated webpage from the Wayback Machine is not yet implemented.  
-  Therefore, clicking “Yes” on the prompt ("Do you want to save from Wayback Machine?") currently has no effect.  
+- In some cases, Playwright may be blocked by anti-bot mechanisms, resulting in a page that displays only an “access denied” message.
 
-  This feature is planned for future implementation.
+  However, this **does not necessarily mean** that evidence preservation has failed.
+  
+  This is because the HAR file may still contain valuable request/response logs that demonstrate access attempts.
+  In addition, the Full HTML file is saved during HAR recording.
 
-- In some cases, Playwright may be blocked by anti-bot mechanisms, resulting in a page that shows only an “access denied” message.  
-
-  However, this **does not necessarily mean** that evidence preservation has failed.  
-  This is because the HAR file may still contain valuable request/response logs that prove access attempts.  
-  In addition, the Full HTML file is saved at nearly the same time the HAR file is generated.  
   These two facts together support the presumption that the designated webpage was publicly available in that form at that time.
 
-  To handle such a case, a dedicated feature aimed at enhancing evidentiary reliability is planned for future implementation.
-
+  A dedicated feature aimed at further enhancing evidentiary reliability in such cases is planned for future implementation.
 
 
 ## License
